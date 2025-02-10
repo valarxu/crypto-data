@@ -15,3 +15,9 @@ npm-debug.log*
 # 操作系统
 .DS_Store
 Thumbs.db 
+
+# 数据文件
+market_data.json
+protocol_fees_data.json
+stablecoins_data.json
+fear_greed_data.json
