@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>加密市场数据面板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>加密市场数据面板</h1>
+        
+        <div class="card">
+            <h2>市场占比</h2>
+            <div class="chart-container">
+                <canvas id="marketDominanceChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>恐慌贪婪指数</h2>
+            <div class="chart-container">
+                <canvas id="fearGreedChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>稳定币排名</h2>
+            <div class="chart-container">
+                <canvas id="stablecoinsChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>协议费用排名</h2>
+            <div class="chart-container">
+                <canvas id="protocolFeesChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <script src="/js/charts.js"></script>
+</body>
+</html> 

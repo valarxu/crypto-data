@@ -1,10 +1,46 @@
 require('dotenv').config();
 const cron = require('node-cron');
 const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
+const path = require('path');
 const { getMarketDominance } = require('./marketDominance');
 const { getFearGreedIndex } = require('./fearGreedIndex');
 const { getTopStablecoins } = require('./stablecoinsRanking');
 const { getTopProtocolFees } = require('./protocolFees');
+
+// 初始化 Express 应用
+const app = express();
+const PORT = 3030;
+
+// 设置静态文件目录
+app.use(express.static('public'));
+
+// API 路由
+app.get('/api/market-data', (req, res) => {
+    res.sendFile(path.join(__dirname, 'market_data.json'));
+});
+
+app.get('/api/stablecoins-data', (req, res) => {
+    res.sendFile(path.join(__dirname, 'stablecoins_data.json'));
+});
+
+app.get('/api/fear-greed-data', (req, res) => {
+    res.sendFile(path.join(__dirname, 'fear_greed_data.json'));
+});
+
+app.get('/api/protocol-fees-data', (req, res) => {
+    res.sendFile(path.join(__dirname, 'protocol_fees_data.json'));
+});
+
+// 主页路由
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// 启动服务器
+app.listen(PORT, () => {
+    console.log(`服务器运行在 http://localhost:${PORT}`);
+});
 
 // 初始化 Telegram Bot
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
