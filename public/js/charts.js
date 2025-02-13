@@ -10,7 +10,7 @@ async function initCharts() {
     const stablecoinsData = await fetchData('stablecoins-data');
     const protocolFeesData = await fetchData('protocol-fees-data');
 
-    // 市场占比折线图
+    // 市场占比堆叠面积图
     const marketDominanceChart = new Chart(document.getElementById('marketDominanceChart'), {
         type: 'line',
         data: {
@@ -18,9 +18,10 @@ async function initCharts() {
             datasets: Object.keys(marketData[0].marketCapPercentages).map((coin, index) => ({
                 label: coin.toUpperCase(),
                 data: marketData.map(d => d.marketCapPercentages[coin]),
+                backgroundColor: getColor(index, 0.6),  // 添加透明度
                 borderColor: getColor(index),
-                fill: false,
-                tension: 0.1
+                fill: true,                            // 启用填充
+                tension: 0.4
             }))
         },
         options: {
@@ -29,16 +30,30 @@ async function initCharts() {
                 title: {
                     display: true,
                     text: '市场占比趋势'
+                },
+                tooltip: {
+                    mode: 'index'  // 显示同一时间点的所有数据
                 }
             },
             scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: '日期'
+                    }
+                },
                 y: {
+                    stacked: true,  // 启用堆叠
                     beginAtZero: true,
                     title: {
                         display: true,
                         text: '占比 (%)'
                     }
                 }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
             }
         }
     });
@@ -73,10 +88,10 @@ async function initCharts() {
         }
     });
 
-    // 稳定币排名折线图
+    // 稳定币排名堆叠面积图
     const stablecoinSymbols = new Set();
     stablecoinsData.forEach(data => {
-        data.topStablecoins.forEach(coin => {
+        data.topStablecoins.slice(0, 5).forEach(coin => {  // 只显示前5个稳定币，避免图表太乱
             stablecoinSymbols.add(coin.symbol);
         });
     });
@@ -91,9 +106,10 @@ async function initCharts() {
                     const coin = d.topStablecoins.find(c => c.symbol === symbol);
                     return coin ? coin.marketCap : null;
                 }),
+                backgroundColor: getColor(index, 0.6),  // 添加透明度
                 borderColor: getColor(index),
-                fill: false,
-                tension: 0.1
+                fill: true,                            // 启用填充
+                tension: 0.4
             }))
         },
         options: {
@@ -102,16 +118,57 @@ async function initCharts() {
                 title: {
                     display: true,
                     text: '稳定币市值趋势'
+                },
+                tooltip: {
+                    mode: 'index',  // 显示同一时间点的所有数据
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += new Intl.NumberFormat('zh-CN', {
+                                    style: 'currency',
+                                    currency: 'USD',
+                                    minimumFractionDigits: 0,
+                                    maximumFractionDigits: 0
+                                }).format(context.parsed.y);
+                            }
+                            return label;
+                        }
+                    }
                 }
             },
             scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: '日期'
+                    }
+                },
                 y: {
+                    stacked: true,  // 启用堆叠
                     beginAtZero: true,
                     title: {
                         display: true,
                         text: '市值 (USD)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return new Intl.NumberFormat('zh-CN', {
+                                style: 'currency',
+                                currency: 'USD',
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 0
+                            }).format(value);
+                        }
                     }
                 }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
             }
         }
     });
@@ -160,15 +217,25 @@ async function initCharts() {
     });
 }
 
-// 生成颜色函数
-function getColor(index) {
+// 修改颜色生成函数，添加透明度支持
+function getColor(index, alpha = 1) {
     const colors = [
         '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
         '#FF9F40', '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
         '#2ecc71', '#e74c3c', '#9b59b6', '#f1c40f', '#1abc9c',
         '#e67e22', '#3498db', '#2c3e50', '#27ae60', '#c0392b'
     ];
-    return colors[index % colors.length];
+    const color = colors[index % colors.length];
+    
+    if (alpha !== 1) {
+        // 将十六进制颜色转换为 rgba
+        const r = parseInt(color.slice(1, 3), 16);
+        const g = parseInt(color.slice(3, 5), 16);
+        const b = parseInt(color.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+    
+    return color;
 }
 
 initCharts(); 
