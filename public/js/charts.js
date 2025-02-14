@@ -167,18 +167,67 @@ async function initCharts() {
         }
     });
 
+    // 创建渐变背景插件
+    const gradientBackgroundPlugin = {
+        id: 'gradientBackground',
+        beforeDraw: (chart) => {
+            const ctx = chart.ctx;
+            const chartArea = chart.chartArea;
+            const width = chartArea.right - chartArea.left;
+            const height = chartArea.bottom - chartArea.top;
+            
+            // 创建渐变
+            const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+            gradient.addColorStop(0, 'rgba(255, 99, 132, 0.1)');    // 红色（恐慌）
+            gradient.addColorStop(0.3, 'rgba(255, 159, 64, 0.1)');  // 橙色
+            gradient.addColorStop(0.5, 'rgba(255, 205, 86, 0.1)');  // 黄色
+            gradient.addColorStop(0.7, 'rgba(75, 192, 192, 0.1)');  // 青色
+            gradient.addColorStop(1, 'rgba(75, 192, 192, 0.1)');    // 绿色（贪婪）
+            
+            // 填充背景
+            ctx.fillStyle = gradient;
+            ctx.fillRect(chartArea.left, chartArea.top, width, height);
+        }
+    };
+
     // 恐慌贪婪指数图表
     new Chart(document.getElementById('fearGreedChart'), {
         type: 'line',
         data: {
             labels: fearGreedData.map(d => new Date(d.timestamp).toLocaleDateString()),
-            datasets: [{
-                label: '恐慌贪婪指数',
-                data: fearGreedData.map(d => d.value),
-                borderColor: '#36A2EB',
-                fill: false,
-                tension: 0.1
-            }]
+            datasets: [
+                {
+                    label: '极度恐慌区域',
+                    data: fearGreedData.map(() => 30),
+                    borderColor: 'rgba(255, 99, 132, 0.3)',
+                    backgroundColor: 'transparent',
+                    fill: 'start',
+                    pointRadius: 0,
+                    borderWidth: 1,
+                    borderDash: [5, 5]
+                },
+                {
+                    label: '极度贪婪区域',
+                    data: fearGreedData.map(() => 70),
+                    borderColor: 'rgba(75, 192, 192, 0.3)',
+                    backgroundColor: 'transparent',
+                    fill: 'end',
+                    pointRadius: 0,
+                    borderWidth: 1,
+                    borderDash: [5, 5]
+                },
+                {
+                    label: '恐慌贪婪指数',
+                    data: fearGreedData.map(d => d.value),
+                    borderColor: '#36A2EB',
+                    backgroundColor: '#36A2EB',
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: false,
+                    tension: 0.1
+                }
+            ]
         },
         options: {
             responsive: true,
@@ -186,15 +235,49 @@ async function initCharts() {
                 title: {
                     display: true,
                     text: '恐慌贪婪指数趋势'
+                },
+                tooltip: {
+                    mode: 'index',
+                    callbacks: {
+                        label: function(context) {
+                            if (context.datasetIndex === 2) {
+                                const value = context.raw;
+                                let classification = '';
+                                if (value >= 70) classification = '(极度贪婪)';
+                                else if (value <= 30) classification = '(极度恐慌)';
+                                else if (value > 50) classification = '(贪婪)';
+                                else if (value < 50) classification = '(恐慌)';
+                                else classification = '(中性)';
+                                return `${context.dataset.label}: ${value} ${classification}`;
+                            }
+                            return null;
+                        }
+                    }
+                },
+                legend: {
+                    labels: {
+                        filter: function(legendItem) {
+                            return legendItem.datasetIndex === 2;
+                        }
+                    }
                 }
             },
             scales: {
                 y: {
                     beginAtZero: true,
-                    max: 100
+                    max: 100,
+                    grid: {
+                        color: function(context) {
+                            if (context.tick.value === 30 || context.tick.value === 70) {
+                                return 'rgba(0, 0, 0, 0.2)';
+                            }
+                            return 'rgba(0, 0, 0, 0.1)';
+                        }
+                    }
                 }
             }
-        }
+        },
+        plugins: [gradientBackgroundPlugin]  // 添加渐变背景插件
     });
 
     // 稳定币排名堆叠面积图
