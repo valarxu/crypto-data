@@ -280,54 +280,122 @@ async function initCharts() {
         plugins: [gradientBackgroundPlugin]  // 添加渐变背景插件
     });
 
-    // 稳定币排名堆叠面积图
-    const stablecoinSymbols = new Set();
-    stablecoinsData.forEach(data => {
-        data.topStablecoins.slice(0, 5).forEach(coin => {  // 只显示前5个稳定币，避免图表太乱
-            stablecoinSymbols.add(coin.symbol);
+    // 稳定币排名图表
+    const stablecoinsDiv = document.getElementById('stablecoinsChart').parentElement;
+    stablecoinsDiv.innerHTML = `
+        <div style="display: flex; justify-content: space-between; gap: 20px; height: 400px;">
+            <div style="flex: 1; position: relative;">
+                <canvas id="stablecoinsPie"></canvas>
+            </div>
+            <div style="flex: 1; position: relative;">
+                <canvas id="stablecoinsChange"></canvas>
+            </div>
+        </div>
+    `;
+
+    // 获取最新的稳定币数据
+    const latestStablecoinsData = stablecoinsData[stablecoinsData.length - 1];
+    const mainStablecoins = latestStablecoinsData.topStablecoins.slice(0, 3).map(coin => coin.symbol);
+    
+    // 计算当前稳定币占比
+    const calculateStablecoinShares = (data) => {
+        const totalMarketCap = data.topStablecoins.reduce((sum, coin) => sum + coin.marketCap, 0);
+        const shares = {};
+        
+        // 计算前3大稳定币占比
+        data.topStablecoins.forEach((coin, index) => {
+            if (index < 3) {
+                shares[coin.symbol] = (coin.marketCap / totalMarketCap) * 100;
+            }
         });
+        
+        // 计算其他稳定币总占比（包括第4个及之后的所有稳定币）
+        const otherMarketCap = data.topStablecoins.slice(3).reduce((sum, coin) => sum + coin.marketCap, 0);
+        shares['OTHER'] = (otherMarketCap / totalMarketCap) * 100;
+        
+        return shares;
+    };
+
+    const currentShares = calculateStablecoinShares(latestStablecoinsData);
+
+    // 按市值排序显示（确保OTHER始终在最后）
+    const sortedShares = Object.entries(currentShares)
+        .sort(([keyA, a], [keyB, b]) => {
+            if (keyA === 'OTHER') return 1;
+            if (keyB === 'OTHER') return -1;
+            return b - a;
+        })
+        .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
+
+    // 稳定币饼图
+    new Chart(document.getElementById('stablecoinsPie'), {
+        type: 'pie',
+        data: {
+            labels: Object.keys(sortedShares).map(symbol => {
+                const percentage = sortedShares[symbol].toFixed(2);
+                return `${symbol} (${percentage}%)`;
+            }),
+            datasets: [{
+                data: Object.values(sortedShares),
+                backgroundColor: Object.keys(sortedShares).map((_, index) => getColor(index)),
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: '当前稳定币市值占比'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.label}: ${context.parsed.toFixed(2)}%`;
+                        }
+                    }
+                },
+                legend: {
+                    position: 'right'
+                }
+            }
+        }
     });
 
-    new Chart(document.getElementById('stablecoinsChart'), {
+    // 计算每日稳定币占比数据
+    const calculateDailyStablecoinShares = (data) => {
+        return data.map(dayData => calculateStablecoinShares(dayData));
+    };
+
+    const dailyShares = calculateDailyStablecoinShares(stablecoinsData);
+
+    // 稳定币趋势堆积面积图
+    new Chart(document.getElementById('stablecoinsChange'), {
         type: 'line',
         data: {
             labels: stablecoinsData.map(d => new Date(d.timestamp).toLocaleDateString()),
-            datasets: Array.from(stablecoinSymbols).map((symbol, index) => ({
+            datasets: Object.keys(sortedShares).map((symbol, index) => ({
                 label: symbol,
-                data: stablecoinsData.map(d => {
-                    const coin = d.topStablecoins.find(c => c.symbol === symbol);
-                    return coin ? coin.marketCap : null;
-                }),
-                backgroundColor: getColor(index, 0.6),  // 添加透明度
+                data: dailyShares.map(day => day[symbol]),
+                backgroundColor: getColor(index, 0.6),
                 borderColor: getColor(index),
-                fill: true,                            // 启用填充
+                fill: true,
                 tension: 0.4
             }))
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 title: {
                     display: true,
-                    text: '稳定币市值趋势'
+                    text: '稳定币市值占比趋势'
                 },
                 tooltip: {
-                    mode: 'index',  // 显示同一时间点的所有数据
+                    mode: 'index',
                     callbacks: {
                         label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed.y !== null) {
-                                label += new Intl.NumberFormat('zh-CN', {
-                                    style: 'currency',
-                                    currency: 'USD',
-                                    minimumFractionDigits: 0,
-                                    maximumFractionDigits: 0
-                                }).format(context.parsed.y);
-                            }
-                            return label;
+                            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}%`;
                         }
                     }
                 }
@@ -340,20 +408,16 @@ async function initCharts() {
                     }
                 },
                 y: {
-                    stacked: true,  // 启用堆叠
-                    beginAtZero: true,
+                    stacked: true,
+                    min: 0,
+                    max: 100,
                     title: {
                         display: true,
-                        text: '市值 (USD)'
+                        text: '占比 (%)'
                     },
                     ticks: {
                         callback: function(value) {
-                            return new Intl.NumberFormat('zh-CN', {
-                                style: 'currency',
-                                currency: 'USD',
-                                minimumFractionDigits: 0,
-                                maximumFractionDigits: 0
-                            }).format(value);
+                            return value + '%';
                         }
                     }
                 }
