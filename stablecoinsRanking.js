@@ -48,25 +48,38 @@ async function getTopStablecoins() {
             })
         );
         
+        // 计算稳定币总市值
+        const totalStablecoinsCap = response.data.peggedAssets.reduce(
+            (sum, coin) => sum + coin.circulating.peggedUSD, 
+            0
+        );
+
+        // 获取前3大稳定币
         const topStablecoins = response.data.peggedAssets
             .sort((a, b) => b.circulating.peggedUSD - a.circulating.peggedUSD)
-            .slice(0, 10);
+            .slice(0, 3);
             
-        console.log('稳定币市值 TOP 10：');
-        console.log('排名\t名称\t\t市值(USD)');
+        console.log('稳定币市值统计：');
+        console.log('--------------------------------');
+        console.log(`稳定币总市值：${formatUSD(totalStablecoinsCap)}`);
+        console.log('\n前3大稳定币：');
+        console.log('排名\t名称\t\t市值(USD)\t占比');
         console.log('--------------------------------');
         
         topStablecoins.forEach((coin, index) => {
-            const formattedValue = formatUSD(coin.circulating.peggedUSD);
+            const marketCap = coin.circulating.peggedUSD;
+            const percentage = (marketCap / totalStablecoinsCap * 100).toFixed(2);
             console.log(
                 `${index + 1}\t` +
                 `${coin.symbol.padEnd(8)}\t` +
-                formattedValue
+                `${formatUSD(marketCap)}\t` +
+                `${percentage}%`
             );
         });
 
         const stablecoinsData = {
             timestamp: new Date().toISOString(),
+            totalStablecoinsCap: totalStablecoinsCap,
             topStablecoins: topStablecoins.map(coin => ({
                 symbol: coin.symbol,
                 name: coin.name,
