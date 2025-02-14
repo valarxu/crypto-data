@@ -10,29 +10,132 @@ async function initCharts() {
     const stablecoinsData = await fetchData('stablecoins-data');
     const protocolFeesData = await fetchData('protocol-fees-data');
 
-    // 市场占比堆叠面积图
-    const marketDominanceChart = new Chart(document.getElementById('marketDominanceChart'), {
+    // 创建市场占比的容器div
+    const marketDominanceDiv = document.getElementById('marketDominanceChart').parentElement;
+    marketDominanceDiv.innerHTML = `
+        <div style="display: flex; justify-content: space-between; gap: 20px; height: 400px;">
+            <div style="flex: 1; position: relative;">
+                <canvas id="marketDominancePie"></canvas>
+            </div>
+            <div style="flex: 1; position: relative;">
+                <canvas id="marketDominanceChange"></canvas>
+            </div>
+        </div>
+    `;
+
+    // 市场占比饼图
+    const latestData = marketData[marketData.length - 1];
+    const excludeCoins = ['usdc', 'usdt', 'steth'];
+    const mainCoins = ['btc', 'eth', 'xrp', 'sol', 'bnb', 'doge', 'ada'];
+    
+    // 过滤并计算百分比
+    const filteredMarketCaps = {};
+    
+    // 先计算主要代币的总占比
+    let mainCoinsTotal = 0;
+    mainCoins.forEach(coin => {
+        const percentage = latestData.marketCapPercentages[coin];
+        filteredMarketCaps[coin] = percentage;
+        mainCoinsTotal += percentage;
+    });
+    
+    // 计算other（100% - 主要代币总占比）
+    filteredMarketCaps['other'] = 100 - mainCoinsTotal;
+
+    // 按市值排序显示（确保OTHER始终在最后）
+    const sortedCoins = Object.entries(filteredMarketCaps)
+        .sort(([keyA, a], [keyB, b]) => {
+            if (keyA === 'other') return 1;
+            if (keyB === 'other') return -1;
+            return b - a;
+        })
+        .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
+
+    new Chart(document.getElementById('marketDominancePie'), {
+        type: 'pie',
+        data: {
+            labels: Object.keys(sortedCoins).map(coin => {
+                const percentage = sortedCoins[coin].toFixed(2);
+                return `${coin.toUpperCase()} (${percentage}%)`;
+            }),
+            datasets: [{
+                data: Object.values(sortedCoins),
+                backgroundColor: Object.keys(sortedCoins).map((_, index) => getColor(index)),
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: '当前市场占比'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.label}: ${context.parsed.toFixed(2)}%`;
+                        }
+                    }
+                },
+                legend: {
+                    position: 'right'
+                }
+            }
+        }
+    });
+
+    // 计算每日市场占比数据
+    const calculateDailyPercentages = (data) => {
+        return data.map(dayData => {
+            const values = {};
+            let mainCoinsTotal = 0;
+            
+            // 计算主要代币的占比
+            mainCoins.forEach(coin => {
+                const percentage = dayData.marketCapPercentages[coin] || 0;
+                values[coin] = percentage;
+                mainCoinsTotal += percentage;
+            });
+            
+            // 计算other
+            values.other = 100 - mainCoinsTotal;
+            
+            return values;
+        });
+    };
+
+    const dailyPercentages = calculateDailyPercentages(marketData);
+
+    // 市场占比趋势堆积面积图
+    new Chart(document.getElementById('marketDominanceChange'), {
         type: 'line',
         data: {
             labels: marketData.map(d => new Date(d.timestamp).toLocaleDateString()),
-            datasets: Object.keys(marketData[0].marketCapPercentages).map((coin, index) => ({
+            datasets: Object.keys(sortedCoins).map((coin, index) => ({
                 label: coin.toUpperCase(),
-                data: marketData.map(d => d.marketCapPercentages[coin]),
-                backgroundColor: getColor(index, 0.6),  // 添加透明度
+                data: dailyPercentages.map(day => day[coin]),
+                backgroundColor: getColor(index, 0.6),
                 borderColor: getColor(index),
-                fill: true,                            // 启用填充
+                fill: true,
                 tension: 0.4
             }))
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 title: {
                     display: true,
                     text: '市场占比趋势'
                 },
                 tooltip: {
-                    mode: 'index'  // 显示同一时间点的所有数据
+                    mode: 'index',
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}%`;
+                        }
+                    }
                 }
             },
             scales: {
@@ -43,11 +146,17 @@ async function initCharts() {
                     }
                 },
                 y: {
-                    stacked: true,  // 启用堆叠
-                    beginAtZero: true,
+                    stacked: true,
+                    min: 0,
+                    max: 100,
                     title: {
                         display: true,
                         text: '占比 (%)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
                     }
                 }
             },
@@ -217,7 +326,7 @@ async function initCharts() {
     });
 }
 
-// 修改颜色生成函数，添加透明度支持
+// 修改颜色生成函数，使用彩虹色系
 function getColor(index, alpha = 1) {
     const colors = [
         '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
@@ -228,7 +337,6 @@ function getColor(index, alpha = 1) {
     const color = colors[index % colors.length];
     
     if (alpha !== 1) {
-        // 将十六进制颜色转换为 rgba
         const r = parseInt(color.slice(1, 3), 16);
         const g = parseInt(color.slice(3, 5), 16);
         const b = parseInt(color.slice(5, 7), 16);
