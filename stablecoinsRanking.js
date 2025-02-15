@@ -48,15 +48,24 @@ async function getTopStablecoins() {
             })
         );
         
+        // 过滤出有效的稳定币数据（市值大于0且价格接近1美元的）
+        const validStablecoins = response.data.peggedAssets.filter(coin => {
+            const marketCap = coin.circulating?.peggedUSD || 0;
+            const price = coin.price;
+            // 如果价格为null或在0.95-1.05范围内都认为是有效的
+            const isValidPrice = price === null || (price >= 0.95 && price <= 1.05);
+            return marketCap > 0 && isValidPrice;
+        });
+
         // 计算稳定币总市值
-        const totalStablecoinsCap = response.data.peggedAssets.reduce(
-            (sum, coin) => sum + coin.circulating.peggedUSD, 
+        const totalStablecoinsCap = validStablecoins.reduce(
+            (sum, coin) => sum + (coin.circulating?.peggedUSD || 0), 
             0
         );
 
         // 获取前3大稳定币
-        const topStablecoins = response.data.peggedAssets
-            .sort((a, b) => b.circulating.peggedUSD - a.circulating.peggedUSD)
+        const topStablecoins = validStablecoins
+            .sort((a, b) => (b.circulating?.peggedUSD || 0) - (a.circulating?.peggedUSD || 0))
             .slice(0, 3);
             
         console.log('稳定币市值统计：');
