@@ -112,25 +112,44 @@ async function initCharts() {
         type: 'line',
         data: {
             labels: marketData.map(d => new Date(d.timestamp).toLocaleDateString()),
-            datasets: Object.keys(sortedCoins).map((coin, index) => ({
-                label: coin.toUpperCase(),
-                data: dailyPercentages.map(day => day[coin]),
-                backgroundColor: getColor(index, 0.6),
-                borderColor: getColor(index),
-                fill: true,
-                tension: 0.4
-            }))
+            datasets: [
+                // BTC 数据集
+                {
+                    label: 'BTC',
+                    data: dailyPercentages.map(day => day.btc),
+                    borderColor: getColor(0),
+                    backgroundColor: getColor(0, 0.1),
+                    fill: true,
+                    yAxisID: 'y-btc',
+                    tension: 0.4
+                },
+                // 其他币种数据集
+                ...Object.keys(sortedCoins)
+                    .filter(coin => coin !== 'btc' && coin !== 'other')
+                    .map((coin, index) => ({
+                        label: coin.toUpperCase(),
+                        data: dailyPercentages.map(day => day[coin]),
+                        borderColor: getColor(index + 1),
+                        backgroundColor: getColor(index + 1, 0.1),
+                        fill: true,
+                        yAxisID: 'y-alts',
+                        tension: 0.4
+                    }))
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
             plugins: {
                 title: {
                     display: true,
                     text: '市场占比趋势'
                 },
                 tooltip: {
-                    mode: 'index',
                     callbacks: {
                         label: function(context) {
                             return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}%`;
@@ -145,24 +164,41 @@ async function initCharts() {
                         text: '日期'
                     }
                 },
-                y: {
-                    stacked: true,
-                    min: 0,
-                    max: 100,
+                'y-btc': {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
                     title: {
                         display: true,
-                        text: '占比 (%)'
+                        text: 'BTC占比 (%)'
                     },
                     ticks: {
                         callback: function(value) {
                             return value + '%';
                         }
-                    }
+                    },
+                    min: 50,  // 根据实际数据调整
+                    max: 65   // 根据实际数据调整
+                },
+                'y-alts': {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: '其他币种占比 (%)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    },
+                    grid: {
+                        drawOnChartArea: false // 只显示一个网格
+                    },
+                    min: 0,   // 根据实际数据调整
+                    max: 15   // 根据实际数据调整
                 }
-            },
-            interaction: {
-                intersect: false,
-                mode: 'index'
             }
         }
     });
@@ -299,19 +335,18 @@ async function initCharts() {
     
     // 计算当前稳定币占比
     const calculateStablecoinShares = (data) => {
-        const totalMarketCap = data.topStablecoins.reduce((sum, coin) => sum + coin.marketCap, 0);
         const shares = {};
         
         // 计算前3大稳定币占比
         data.topStablecoins.forEach((coin, index) => {
             if (index < 3) {
-                shares[coin.symbol] = (coin.marketCap / totalMarketCap) * 100;
+                shares[coin.symbol] = (coin.marketCap / data.totalStablecoinsCap) * 100;
             }
         });
         
-        // 计算其他稳定币总占比（包括第4个及之后的所有稳定币）
-        const otherMarketCap = data.topStablecoins.slice(3).reduce((sum, coin) => sum + coin.marketCap, 0);
-        shares['OTHER'] = (otherMarketCap / totalMarketCap) * 100;
+        // 计算其他稳定币总占比
+        const topThreeSum = data.topStablecoins.slice(0, 3).reduce((sum, coin) => sum + coin.marketCap, 0);
+        shares['OTHER'] = ((data.totalStablecoinsCap - topThreeSum) / data.totalStablecoinsCap) * 100;
         
         return shares;
     };
@@ -333,7 +368,11 @@ async function initCharts() {
         data: {
             labels: Object.keys(sortedShares).map(symbol => {
                 const percentage = sortedShares[symbol].toFixed(2);
-                return `${symbol} (${percentage}%)`;
+                const marketCap = symbol === 'OTHER' 
+                    ? ((latestStablecoinsData.totalStablecoinsCap * sortedShares[symbol]) / 100).toFixed(2)
+                    : latestStablecoinsData.topStablecoins.find(coin => coin.symbol === symbol)?.marketCap.toFixed(2);
+                const marketCapB = (marketCap / 1e9).toFixed(2);
+                return `${symbol} (${percentage}% | ${marketCapB}B)`;
             }),
             datasets: [{
                 data: Object.values(sortedShares),
@@ -346,12 +385,18 @@ async function initCharts() {
             plugins: {
                 title: {
                     display: true,
-                    text: '当前稳定币市值占比'
+                    text: '稳定币市值分布'
                 },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return `${context.label}: ${context.parsed.toFixed(2)}%`;
+                            const symbol = context.label.split(' ')[0];
+                            const percentage = context.parsed.toFixed(2);
+                            const marketCap = symbol === 'OTHER'
+                                ? ((latestStablecoinsData.totalStablecoinsCap * context.parsed) / 100)
+                                : latestStablecoinsData.topStablecoins.find(coin => coin.symbol === symbol)?.marketCap;
+                            const marketCapB = (marketCap / 1e9).toFixed(2);
+                            return `${symbol}: ${percentage}% (${marketCapB}B USD)`;
                         }
                     }
                 },
@@ -374,14 +419,14 @@ async function initCharts() {
         type: 'line',
         data: {
             labels: stablecoinsData.map(d => new Date(d.timestamp).toLocaleDateString()),
-            datasets: Object.keys(sortedShares).map((symbol, index) => ({
-                label: symbol,
-                data: dailyShares.map(day => day[symbol]),
-                backgroundColor: getColor(index, 0.6),
-                borderColor: getColor(index),
+            datasets: [{
+                label: '稳定币总市值',
+                data: stablecoinsData.map(d => d.totalStablecoinsCap),
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgb(54, 162, 235)',
                 fill: true,
                 tension: 0.4
-            }))
+            }]
         },
         options: {
             responsive: true,
@@ -389,13 +434,15 @@ async function initCharts() {
             plugins: {
                 title: {
                     display: true,
-                    text: '稳定币市值占比趋势'
+                    text: '稳定币总市值趋势'
                 },
                 tooltip: {
                     mode: 'index',
                     callbacks: {
                         label: function(context) {
-                            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}%`;
+                            // 将数值格式化为十亿美元，保留2位小数
+                            const value = (context.parsed.y / 1e9).toFixed(2);
+                            return `总市值: ${value}B USD`;
                         }
                     }
                 }
@@ -408,16 +455,13 @@ async function initCharts() {
                     }
                 },
                 y: {
-                    stacked: true,
-                    min: 0,
-                    max: 100,
                     title: {
                         display: true,
-                        text: '占比 (%)'
+                        text: '总市值 (USD)'
                     },
                     ticks: {
                         callback: function(value) {
-                            return value + '%';
+                            return (value / 1e9).toFixed(0) + 'B';
                         }
                     }
                 }
