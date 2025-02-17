@@ -115,7 +115,7 @@ async function initCharts() {
             datasets: [
                 // BTC 数据集
                 {
-                    label: 'BTC',
+                    label: 'BTC (左轴)',
                     data: dailyPercentages.map(day => day.btc),
                     borderColor: getColor(0),
                     backgroundColor: getColor(0, 0.1),
@@ -127,7 +127,7 @@ async function initCharts() {
                 ...Object.keys(sortedCoins)
                     .filter(coin => coin !== 'btc' && coin !== 'other')
                     .map((coin, index) => ({
-                        label: coin.toUpperCase(),
+                        label: `${coin.toUpperCase()} (右轴)`,
                         data: dailyPercentages.map(day => day[coin]),
                         borderColor: getColor(index + 1),
                         backgroundColor: getColor(index + 1, 0.1),
@@ -147,13 +147,20 @@ async function initCharts() {
             plugins: {
                 title: {
                     display: true,
-                    text: '市场占比趋势'
+                    text: '市场占比趋势 (BTC使用左轴，其他币种使用右轴)'
                 },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}%`;
+                            const axisIndicator = context.dataset.yAxisID === 'y-btc' ? '(左轴)' : '(右轴)';
+                            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}% ${axisIndicator}`;
                         }
+                    }
+                },
+                legend: {
+                    labels: {
+                        usePointStyle: true,
+                        padding: 10
                     }
                 }
             },
@@ -170,15 +177,17 @@ async function initCharts() {
                     position: 'left',
                     title: {
                         display: true,
-                        text: 'BTC占比 (%)'
+                        text: 'BTC占比 (%)',
+                        color: getColor(0)
                     },
                     ticks: {
                         callback: function(value) {
                             return value + '%';
-                        }
+                        },
+                        color: getColor(0)
                     },
-                    min: 50,  // 根据实际数据调整
-                    max: 65   // 根据实际数据调整
+                    min: 50,
+                    max: 65
                 },
                 'y-alts': {
                     type: 'linear',
@@ -186,18 +195,20 @@ async function initCharts() {
                     position: 'right',
                     title: {
                         display: true,
-                        text: '其他币种占比 (%)'
+                        text: '其他币种占比 (%)',
+                        color: getColor(1)
                     },
                     ticks: {
                         callback: function(value) {
                             return value + '%';
-                        }
+                        },
+                        color: getColor(1)
                     },
                     grid: {
-                        drawOnChartArea: false // 只显示一个网格
+                        drawOnChartArea: false
                     },
-                    min: 0,   // 根据实际数据调整
-                    max: 15   // 根据实际数据调整
+                    min: 0,
+                    max: 15
                 }
             }
         }
