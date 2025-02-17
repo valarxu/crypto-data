@@ -487,9 +487,13 @@ async function initCharts() {
     // 协议费用排名折线图
     const protocolNames = new Set();
     protocolFeesData.forEach(data => {
-        data.protocols.slice(0, 10).forEach(protocol => {
-            protocolNames.add(protocol.name);
-        });
+        // 过滤掉 Tether 后，取前 10 个协议
+        data.protocols
+            .filter(protocol => protocol.name !== 'Tether')
+            .slice(0, 10)
+            .forEach(protocol => {
+                protocolNames.add(protocol.name);
+            });
     });
 
     new Chart(document.getElementById('protocolFeesChart'), {
@@ -499,7 +503,9 @@ async function initCharts() {
             datasets: Array.from(protocolNames).map((name, index) => ({
                 label: name,
                 data: protocolFeesData.map(d => {
-                    const protocol = d.protocols.find(p => p.name === name);
+                    const protocol = d.protocols
+                        .filter(p => p.name !== 'Tether')
+                        .find(p => p.name === name);
                     return protocol ? protocol.total24h : null;
                 }),
                 borderColor: getColor(index),
@@ -513,6 +519,16 @@ async function initCharts() {
                 title: {
                     display: true,
                     text: '协议费用趋势'
+                },
+                tooltip: {
+                    mode: 'index',
+                    callbacks: {
+                        label: function(context) {
+                            // 将数值格式化为百万美元，保留2位小数
+                            const value = (context.parsed.y / 1e6).toFixed(2);
+                            return `${context.dataset.label}: ${value}M USD`;
+                        }
+                    }
                 }
             },
             scales: {
@@ -521,6 +537,11 @@ async function initCharts() {
                     title: {
                         display: true,
                         text: '24小时费用 (USD)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return (value / 1e6).toFixed(0) + 'M';
+                        }
                     }
                 }
             }
