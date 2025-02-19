@@ -107,35 +107,18 @@ async function initCharts() {
 
     const dailyPercentages = calculateDailyPercentages(marketData);
 
-    // 市场占比趋势堆积面积图
+    // 市场占比趋势堆积柱状图
     new Chart(document.getElementById('marketDominanceChange'), {
-        type: 'line',
+        type: 'bar',
         data: {
             labels: marketData.map(d => new Date(d.timestamp).toLocaleDateString()),
-            datasets: [
-                // BTC 数据集
-                {
-                    label: 'BTC (左轴)',
-                    data: dailyPercentages.map(day => day.btc),
-                    borderColor: getColor(0),
-                    backgroundColor: getColor(0, 0.1),
-                    fill: true,
-                    yAxisID: 'y-btc',
-                    tension: 0.4
-                },
-                // 其他币种数据集
-                ...Object.keys(sortedCoins)
-                    .filter(coin => coin !== 'btc' && coin !== 'other')
-                    .map((coin, index) => ({
-                        label: `${coin.toUpperCase()} (右轴)`,
-                        data: dailyPercentages.map(day => day[coin]),
-                        borderColor: getColor(index + 1),
-                        backgroundColor: getColor(index + 1, 0.1),
-                        fill: true,
-                        yAxisID: 'y-alts',
-                        tension: 0.4
-                    }))
-            ]
+            datasets: Object.keys(sortedCoins)
+                .map((coin, index) => ({
+                    label: coin.toUpperCase(),
+                    data: dailyPercentages.map(day => day[coin]),
+                    backgroundColor: getColor(index),
+                    stack: 'stack0'
+                }))
         },
         options: {
             responsive: true,
@@ -147,17 +130,17 @@ async function initCharts() {
             plugins: {
                 title: {
                     display: true,
-                    text: '市场占比趋势 (BTC使用左轴，其他币种使用右轴)'
+                    text: '市场占比趋势'
                 },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            const axisIndicator = context.dataset.yAxisID === 'y-btc' ? '(左轴)' : '(右轴)';
-                            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}% ${axisIndicator}`;
+                            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}%`;
                         }
                     }
                 },
                 legend: {
+                    position: 'right',
                     labels: {
                         usePointStyle: true,
                         padding: 10
@@ -171,46 +154,23 @@ async function initCharts() {
                         text: '日期'
                     }
                 },
-                'y-btc': {
-                    type: 'linear',
-                    display: true,
-                    position: 'left',
+                y: {
+                    stacked: true,
                     title: {
                         display: true,
-                        text: 'BTC占比 (%)',
-                        color: getColor(0)
+                        text: '占比 (%)'
                     },
                     ticks: {
                         callback: function(value) {
                             return value + '%';
-                        },
-                        color: getColor(0)
-                    },
-                    min: 50,
-                    max: 65
-                },
-                'y-alts': {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                    title: {
-                        display: true,
-                        text: '其他币种占比 (%)',
-                        color: getColor(1)
-                    },
-                    ticks: {
-                        callback: function(value) {
-                            return value + '%';
-                        },
-                        color: getColor(1)
-                    },
-                    grid: {
-                        drawOnChartArea: false
+                        }
                     },
                     min: 0,
-                    max: 15
+                    max: 100
                 }
-            }
+            },
+            barPercentage: 1.0,  // 移除柱子之间的水平间隔
+            categoryPercentage: 1.0  // 移除类别之间的间隔
         }
     });
 
