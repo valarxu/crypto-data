@@ -152,6 +152,14 @@ async function initCharts() {
                     title: {
                         display: true,
                         text: '日期'
+                    },
+                    ticks: {
+                        callback: function(val, index, ticks) {
+                            if (index === 0 || index === ticks.length - 1) {
+                                return this.getLabelForValue(val);
+                            }
+                            return '';
+                        }
                     }
                 },
                 y: {
@@ -270,6 +278,16 @@ async function initCharts() {
                 }
             },
             scales: {
+                x: {
+                    ticks: {
+                        callback: function(val, index, ticks) {
+                            if (index === 0 || index === ticks.length - 1) {
+                                return this.getLabelForValue(val);
+                            }
+                            return '';
+                        }
+                    }
+                },
                 y: {
                     beginAtZero: true,
                     max: 100,
@@ -423,6 +441,14 @@ async function initCharts() {
                     title: {
                         display: true,
                         text: '日期'
+                    },
+                    ticks: {
+                        callback: function(val, index, ticks) {
+                            if (index === 0 || index === ticks.length - 1) {
+                                return this.getLabelForValue(val);
+                            }
+                            return '';
+                        }
                     }
                 },
                 y: {
@@ -492,6 +518,16 @@ async function initCharts() {
                 }
             },
             scales: {
+                x: {
+                    ticks: {
+                        callback: function(val, index, ticks) {
+                            if (index === 0 || index === ticks.length - 1) {
+                                return this.getLabelForValue(val);
+                            }
+                            return '';
+                        }
+                    }
+                },
                 y: {
                     beginAtZero: true,
                     title: {
