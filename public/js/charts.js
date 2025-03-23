@@ -470,74 +470,268 @@ async function initCharts() {
         }
     });
 
-    // 协议费用排名折线图
-    const protocolNames = new Set();
-    protocolFeesData.forEach(data => {
-        // 过滤掉 Tether 后，取前 10 个协议
-        data.protocols
-            .filter(protocol => protocol.name !== 'Tether')
-            .slice(0, 10)
-            .forEach(protocol => {
-                protocolNames.add(protocol.name);
-            });
-    });
+    // 协议费用排名图表
+    const protocolFeesDiv = document.getElementById('protocolFeesChart').parentElement;
+    protocolFeesDiv.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div style="height: 400px;">
+                <canvas id="protocolFeesRaceChart"></canvas>
+            </div>
+            <div style="display: flex; justify-content: space-between; gap: 20px; height: 400px;">
+                <div style="flex: 1; position: relative;">
+                    <canvas id="protocolFeesCategoryChart"></canvas>
+                </div>
+                <div style="flex: 1; position: relative;">
+                    <canvas id="protocolFeesTopChart"></canvas>
+                </div>
+            </div>
+        </div>
+    `;
 
-    new Chart(document.getElementById('protocolFeesChart'), {
+    // 创建协议费用动态排名图表
+    createProtocolFeesRaceChart(protocolFeesData);
+    // 创建协议分类图表
+    createProtocolFeesByCategoryChart(protocolFeesData);
+    // 创建Top10协议图表
+    createProtocolFeesTopChart(protocolFeesData);
+}
+
+// 协议费用动态排名图表
+function createProtocolFeesRaceChart(protocolFeesData) {
+    // 合并所有时间点的协议名称
+    const allProtocols = new Set();
+    protocolFeesData.forEach(data => {
+        data.protocols.forEach(protocol => {
+            allProtocols.add(protocol.name);
+        });
+    });
+    
+    // 准备数据
+    const seriesData = Array.from(allProtocols).map(name => {
+        return {
+            name: name,
+            data: protocolFeesData.map(data => {
+                const protocol = data.protocols.find(p => p.name === name);
+                return protocol ? [new Date(data.timestamp).getTime(), protocol.total24h] : null;
+            }).filter(point => point !== null)
+        };
+    });
+    
+    // 只保留至少有3个数据点的协议
+    const filteredSeries = seriesData.filter(series => series.data.length >= 3);
+    
+    // 按照最新数据（如有）的值进行排序
+    filteredSeries.sort((a, b) => {
+        const lastA = a.data[a.data.length - 1][1];
+        const lastB = b.data[b.data.length - 1][1];
+        return lastB - lastA;
+    });
+    
+    // 只取前15个协议
+    const topSeries = filteredSeries.slice(0, 15);
+    
+    new Chart(document.getElementById('protocolFeesRaceChart'), {
         type: 'line',
         data: {
-            labels: protocolFeesData.map(d => new Date(d.timestamp).toLocaleDateString()),
-            datasets: Array.from(protocolNames).map((name, index) => ({
-                label: name,
-                data: protocolFeesData.map(d => {
-                    const protocol = d.protocols
-                        .filter(p => p.name !== 'Tether')
-                        .find(p => p.name === name);
-                    return protocol ? protocol.total24h : null;
-                }),
+            datasets: topSeries.map((series, index) => ({
+                label: series.name,
+                data: series.data,
                 borderColor: getColor(index),
-                fill: false,
+                backgroundColor: getColor(index, 0.1),
+                pointRadius: 3,
                 tension: 0.1
             }))
         },
         options: {
             responsive: true,
-            plugins: {
-                title: {
-                    display: true,
-                    text: '协议费用趋势'
-                },
-                tooltip: {
-                    mode: 'index',
-                    callbacks: {
-                        label: function(context) {
-                            // 将数值格式化为百万美元，保留2位小数
-                            const value = (context.parsed.y / 1e6).toFixed(2);
-                            return `${context.dataset.label}: ${value}M USD`;
-                        }
-                    }
-                }
-            },
             scales: {
                 x: {
-                    ticks: {
-                        callback: function(val, index, ticks) {
-                            if (index === 0 || index === ticks.length - 1) {
-                                return this.getLabelForValue(val);
-                            }
-                            return '';
-                        }
+                    type: 'time',
+                    time: {
+                        unit: 'day'
+                    },
+                    title: {
+                        display: true,
+                        text: '日期'
                     }
                 },
                 y: {
-                    beginAtZero: true,
+                    type: 'logarithmic', // 对数比例更好展示差异大的数据
                     title: {
                         display: true,
                         text: '24小时费用 (USD)'
                     },
                     ticks: {
-                        callback: function(value) {
-                            return (value / 1e6).toFixed(0) + 'M';
+                        callback: value => (value / 1e6).toFixed(1) + 'M'
+                    }
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: '协议费用趋势（按最新数据排名）'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => {
+                            const value = (context.raw[1] / 1e6).toFixed(2);
+                            return `${context.dataset.label}: ${value}M USD`;
                         }
+                    }
+                },
+                legend: {
+                    position: 'right',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 10
+                    }
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            }
+        }
+    });
+}
+
+// 按协议类别分类展示图表
+function createProtocolFeesByCategoryChart(protocolFeesData) {
+    // 预定义协议类别
+    const categories = {
+        'DEX': ['Uniswap V3', 'Uniswap V2', 'PancakeSwap AMM', 'Raydium AMM', 'Orca', 'Curve DEX', 'DODO AMM', 'Balancer V2', 'SushiSwap', 'Joe V2', 'Jupiter Aggregator', 'Clipper', 'PancakeSwap StableSwap', 'Banana Gun', 'MetaMask'],
+        '借贷': ['AAVE V3', 'AAVE V2', 'Compound V2', 'Venus Core Pool', 'Maple', 'Frax Ether', 'Fluid Lending'],
+        '质押': ['Lido', 'Marinade Liquid Staking', 'StakeWise V2', 'ether.fi Liquid', 'Jito', 'Solana'],
+        '永续合约': ['GMX V2 Perps', 'Fulcrom Perps', 'Jupiter Perpetual Exchange', 'Hyperliquid Spot Orderbook', 'Drift Trade'],
+        '公链': ['Ethereum', 'Bitcoin', 'Tron', 'Binance', 'Optimism', 'Polygon'],
+        '稳定币': ['Tether', 'Circle', 'Frax FPI'],
+        '预测市场': ['Polymarket']
+    };
+    
+    // 准备数据
+    const latestData = protocolFeesData[protocolFeesData.length - 1];
+    
+    // 计算每个类别的总和
+    const categoryTotals = {};
+    for (const category in categories) {
+        categoryTotals[category] = 0;
+    }
+    categoryTotals['其他'] = 0;
+    
+    latestData.protocols.forEach(protocol => {
+        let found = false;
+        for (const category in categories) {
+            if (categories[category].includes(protocol.name)) {
+                categoryTotals[category] += protocol.total24h;
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            categoryTotals['其他'] += protocol.total24h;
+        }
+    });
+    
+    // 过滤掉总和为0的类别
+    const filteredCategories = Object.fromEntries(
+        Object.entries(categoryTotals).filter(([_, value]) => value > 0)
+    );
+    
+    // 创建饼图
+    new Chart(document.getElementById('protocolFeesCategoryChart'), {
+        type: 'pie',
+        data: {
+            labels: Object.keys(filteredCategories),
+            datasets: [{
+                data: Object.values(filteredCategories),
+                backgroundColor: Object.keys(filteredCategories).map((_, index) => getColor(index))
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: '按类别的协议费用分布'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => {
+                            const value = (context.raw / 1e6).toFixed(2);
+                            const percentage = ((context.raw / Object.values(filteredCategories).reduce((a, b) => a + b, 0)) * 100).toFixed(1);
+                            return `${context.label}: ${value}M USD (${percentage}%)`;
+                        }
+                    }
+                },
+                legend: {
+                    position: 'right',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 10
+                    }
+                }
+            }
+        }
+    });
+}
+
+// 创建Top10协议图表
+function createProtocolFeesTopChart(protocolFeesData) {
+    // 获取最新数据
+    const latestData = protocolFeesData[protocolFeesData.length - 1];
+    
+    // 过滤掉Tether并获取前10名协议
+    const top10Protocols = latestData.protocols
+        .filter(protocol => protocol.name !== 'Tether')
+        .slice(0, 10);
+    
+    // 按照24小时费用排序
+    top10Protocols.sort((a, b) => b.total24h - a.total24h);
+    
+    // 创建横向条形图
+    new Chart(document.getElementById('protocolFeesTopChart'), {
+        type: 'bar',
+        data: {
+            labels: top10Protocols.map(p => p.name),
+            datasets: [{
+                label: '24小时协议费用',
+                data: top10Protocols.map(p => p.total24h),
+                backgroundColor: top10Protocols.map((_, index) => getColor(index)),
+                borderColor: top10Protocols.map((_, index) => getColor(index)),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Top 10协议费用'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => {
+                            const value = (context.raw / 1e6).toFixed(2);
+                            return `${value}M USD`;
+                        }
+                    }
+                },
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: '24小时费用 (USD)'
+                    },
+                    ticks: {
+                        callback: (value) => (value / 1e6).toFixed(0) + 'M'
                     }
                 }
             }
