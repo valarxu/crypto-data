@@ -6,7 +6,7 @@ const path = require('path');
 const { getMarketDominance } = require('./marketDominance');
 const { getFearGreedIndex } = require('./fearGreedIndex');
 const { getTopStablecoins } = require('./stablecoinsRanking');
-const { getTopProtocolFees } = require('./protocolFees');
+
 
 // 初始化 Express 应用
 const app = express();
@@ -28,9 +28,7 @@ app.get('/api/fear-greed-data', (req, res) => {
     res.sendFile(path.join(__dirname, 'fear_greed_data.json'));
 });
 
-app.get('/api/protocol-fees-data', (req, res) => {
-    res.sendFile(path.join(__dirname, 'protocol_fees_data.json'));
-});
+
 
 // 主页路由
 app.get('/', (req, res) => {
@@ -56,7 +54,7 @@ async function runAllTasks() {
         { name: '市场占比数据', func: getMarketDominance },
         { name: '恐慌贪婪指数', func: getFearGreedIndex },
         { name: '稳定币排名', func: getTopStablecoins },
-        // { name: '协议费用排名', func: getTopProtocolFees }
+
     ];
 
     // 执行所有任务
@@ -97,4 +95,4 @@ console.log('定时任务已启动，将在每天早上 8:00 (东八区) 运行'
 if (process.argv.includes('--run-now')) {
     console.log('立即执行任务...');
     runAllTasks();
-} 
+}

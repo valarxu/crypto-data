@@ -7,7 +7,7 @@
 - 🔄 市场占比数据监控
 - 📊 恐慌贪婪指数追踪
 - 💰 稳定币市值排行 (TOP 10)
-- 💸 协议费用排行 (TOP 20)
+
 - 🤖 Telegram 机器人通知
 - 🌐 Web 数据展示界面
 - ⏰ 自动定时数据更新（每天早上 8:00）
@@ -58,7 +58,7 @@ node index.js --run-now
 - GET `/api/market-data` - 获取市场占比数据
 - GET `/api/stablecoins-data` - 获取稳定币排名数据
 - GET `/api/fear-greed-data` - 获取恐慌贪婪指数
-- GET `/api/protocol-fees-data` - 获取协议费用排名
+
 
 ## 数据更新频率
 
@@ -69,4 +69,4 @@ node index.js --run-now
 
 - 请确保 `.env` 文件中的 Telegram 配置正确
 - 需要稳定的网络连接以确保数据采集
-- 建议使用 PM2 等工具确保服务持续运行 
+- 建议使用 PM2 等工具确保服务持续运行

@@ -7,7 +7,7 @@
     "fear-greed": "node fearGreedIndex.js",
     "market-dominance": "node marketDominance.js",
     "stablecoins": "node stablecoinsRanking.js",
-    "protocol-fees": "node protocolFees.js"
+
   },
   "dependencies": {
     "axios": "^1.6.2",

@@ -36,77 +36,7 @@
             width: 100%;
         }
         
-        /* 协议费用表格样式 */
-        .protocol-fees-container {
-            width: 100%;
-        }
-        .protocol-fees-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        .protocol-fees-time {
-            color: #666;
-            font-size: 0.9em;
-        }
-        .protocol-fees-table-container {
-            width: 100%;
-            overflow-y: visible;
-            overflow-x: auto;
-        }
-        .protocol-fees-table {
-            width: 100%;
-            min-width: 900px;
-            border-collapse: collapse;
-            font-size: 14px;
-            table-layout: fixed;
-        }
-        .protocol-fees-table th, 
-        .protocol-fees-table td {
-            padding: 8px 12px;
-            text-align: right;
-            border-bottom: 1px solid #eee;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .protocol-fees-table th:first-child, 
-        .protocol-fees-table td:first-child,
-        .protocol-fees-table th:nth-child(2), 
-        .protocol-fees-table td:nth-child(2),
-        .protocol-fees-table th:nth-child(3), 
-        .protocol-fees-table td:nth-child(3) {
-            text-align: left;
-        }
-        .protocol-fees-table th {
-            background-color: #f8f8f8;
-            font-weight: bold;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        .protocol-fees-table tr:hover {
-            background-color: #f5f5f5;
-        }
-        
-        /* 添加响应式设计 */
-        @media (max-width: 768px) {
-            .protocol-fees-table {
-                min-width: 700px;
-            }
-            .protocol-fees-table th, 
-            .protocol-fees-table td {
-                padding: 6px 8px;
-                font-size: 12px;
-            }
-        }
-        
-        /* 更新卡片样式，增加协议费用排名的空间 */
-        .card:last-child {
-            height: auto;
-            min-height: 800px;
-        }
+
     </style>
 </head>
 <body>
@@ -134,13 +64,8 @@
             </div>
         </div>
 
-        <!-- <div class="card">
-            <h2>协议费用排名</h2>
-            <div class="chart-container">
-                <canvas id="protocolFeesChart"></canvas>
-            </div>
-        </div> -->
+
     </div>
     <script src="/js/charts.js"></script>
 </body>
-</html> 
+</html>
