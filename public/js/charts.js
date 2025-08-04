@@ -14,11 +14,11 @@ async function initCharts() {
     console.log('开始获取协议费用数据...');
 
     // 确保protocolFeesChart元素存在
-    const chartElement = document.getElementById('protocolFeesChart');
-    if (!chartElement) {
-        console.error('未找到protocolFeesChart元素');
-        return;
-    }
+    // const chartElement = document.getElementById('protocolFeesChart');
+    // if (!chartElement) {
+    //     console.error('未找到protocolFeesChart元素');
+    //     return;
+    // }
 
     // 创建市场占比的容器div
     const marketDominanceDiv = document.getElementById('marketDominanceChart').parentElement;
