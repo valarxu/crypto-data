@@ -11,7 +11,7 @@ async function initCharts() {
     
     // 不再从文件加载协议费用数据，而是直接获取最新数据
     
-    console.log('开始获取协议费用数据...');
+    // console.log('开始获取协议费用数据...');
 
     // 确保protocolFeesChart元素存在
     // const chartElement = document.getElementById('protocolFeesChart');
@@ -514,7 +514,7 @@ async function initCharts() {
     `;
     
     // 加载协议费用数据
-    loadProtocolFeesData();
+    // loadProtocolFeesData();
 }
 
 // 新增函数：加载协议费用数据
