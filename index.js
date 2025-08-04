@@ -56,7 +56,7 @@ async function runAllTasks() {
         { name: '市场占比数据', func: getMarketDominance },
         { name: '恐慌贪婪指数', func: getFearGreedIndex },
         { name: '稳定币排名', func: getTopStablecoins },
-        { name: '协议费用排名', func: getTopProtocolFees }
+        // { name: '协议费用排名', func: getTopProtocolFees }
     ];
 
     // 执行所有任务
